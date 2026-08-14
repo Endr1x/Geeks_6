@@ -1,71 +1,78 @@
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView, LogoutView
-from django.shortcuts import get_object_or_404
-from .models import Movie, Genre, Comment, VipSeatBooking
-from .forms import MovieForm, CommentForm, VipBookingForm, CustomUserRegisterForm
+from django.contrib.auth.forms import UserCreationForm
+from django.shortcuts import get_object_or_404, redirect
+from django.db.models import Q
+from django.contrib import messages
+
+from .models import Movie, Genre, Comment, VIPBooking
+from .forms import MovieForm, CommentForm, VIPBookingForm
+
 
 class MovieListView(ListView):
     model = Movie
-    template_name = 'CineBoard/movie_list.html'
+    template_name = 'cineboard/movie_list.html'
     context_object_name = 'movies'
-    paginate_by = 6
 
     def get_queryset(self):
-        queryset = Movie.objects.all().order_by('-id')
-        query = self.request.GET.get('q')
+        queryset = super().get_queryset().prefetch_related('genres')
+        search_query = self.request.GET.get('q')
         genre_id = self.request.GET.get('genre')
 
-        if query:
-            queryset = queryset.filter(title__icontains=query)
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) | Q(description__icontains=search_query)
+            )
 
         if genre_id:
             queryset = queryset.filter(genres__id=genre_id)
 
-        return queryset
+        return queryset.distinct()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['genres'] = Genre.objects.all()
-        context['selected_genre'] = self.request.GET.get('genre')
-        context['query'] = self.request.GET.get('q', '')
+        context['selected_genre'] = self.request.GET.get('genre', '')
+        context['search_query'] = self.request.GET.get('q', '')
         return context
+
 
 class MovieDetailView(DetailView):
     model = Movie
-    template_name = 'CineBoard/movie_detail.html'
+    template_name = 'cineboard/movie_detail.html'
     context_object_name = 'movie'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['comment_form'] = CommentForm()
-        context['booking_form'] = VipBookingForm()
-        
-        user_booking = None
+        context['vip_form'] = VIPBookingForm()
         if self.request.user.is_authenticated:
-            user_booking = VipSeatBooking.objects.filter(user=self.request.user, movie=self.object).first()
-        context['user_booking'] = user_booking
+            context['user_vip_booking'] = VIPBooking.objects.filter(user=self.request.user).first()
         return context
+
 
 class MovieCreateView(LoginRequiredMixin, CreateView):
     model = Movie
     form_class = MovieForm
-    template_name = 'CineBoard/movie_form.html'
+    template_name = 'cineboard/movie_form.html'
     success_url = reverse_lazy('cineboard:movie_list')
+
 
 class MovieUpdateView(LoginRequiredMixin, UpdateView):
     model = Movie
     form_class = MovieForm
-    template_name = 'CineBoard/movie_form.html'
+    template_name = 'cineboard/movie_form.html'
 
     def get_success_url(self):
         return reverse('cineboard:movie_detail', kwargs={'pk': self.object.pk})
 
+
 class MovieDeleteView(LoginRequiredMixin, DeleteView):
     model = Movie
-    template_name = 'CineBoard/movie_confirm_delete.html'
+    template_name = 'cineboard/movie_confirm_delete.html'
     success_url = reverse_lazy('cineboard:movie_list')
+
 
 class AddCommentView(LoginRequiredMixin, CreateView):
     model = Comment
@@ -75,31 +82,29 @@ class AddCommentView(LoginRequiredMixin, CreateView):
         movie = get_object_or_404(Movie, pk=self.kwargs['pk'])
         form.instance.movie = movie
         form.instance.author = self.request.user
-        return super().form_valid(form)
+        form.save()
+        messages.success(self.request, "Комментарий добавлен!")
+        return redirect('cineboard:movie_detail', pk=movie.pk)
 
-    def get_success_url(self):
-        return reverse('cineboard:movie_detail', kwargs={'pk': self.kwargs['pk']})
 
-class BookVipSeatView(LoginRequiredMixin, CreateView):
-    model = VipSeatBooking
-    form_class = VipBookingForm
+class BookVIPView(LoginRequiredMixin, CreateView):
+    model = VIPBooking
+    form_class = VIPBookingForm
 
     def form_valid(self, form):
         movie = get_object_or_404(Movie, pk=self.kwargs['pk'])
-        form.instance.movie = movie
+        if VIPBooking.objects.filter(user=self.request.user).exists():
+            messages.error(self.request, "Вы уже забронировали 1 VIP-место!")
+            return redirect('cineboard:movie_detail', pk=movie.pk)
+
         form.instance.user = self.request.user
-        return super().form_valid(form)
+        form.instance.movie = movie
+        form.save()
+        messages.success(self.request, f"VIP место №{form.instance.seat_number} забронировано!")
+        return redirect('cineboard:movie_detail', pk=movie.pk)
 
-    def get_success_url(self):
-        return reverse('cineboard:movie_detail', kwargs={'pk': self.kwargs['pk']})
 
-class UserRegisterView(CreateView):
-    form_class = CustomUserRegisterForm
-    template_name = 'CineBoard/register.html'
-    success_url = reverse_lazy('cineboard:login')
-
-class UserLoginView(LoginView):
-    template_name = 'CineBoard/login.html'
-
-class UserLogoutView(LogoutView):
-    next_page = reverse_lazy('cineboard:movie_list')
+class SignUpView(CreateView):
+    form_class = UserCreationForm
+    success_url = reverse_lazy('login')
+    template_name = 'registration/signup.html'

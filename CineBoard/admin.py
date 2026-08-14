@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import Genre, Movie, Comment, VipSeatBooking
+from .models import Movie, Genre, Comment, VIPBooking
 
-admin.site.register(Genre)
 admin.site.register(Movie)
+admin.site.register(Genre)
 admin.site.register(Comment)
-admin.site.register(VipSeatBooking)
+admin.site.register(VIPBooking)
