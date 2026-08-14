@@ -1,0 +1,13 @@
+{% extends 'CineBoard/base.html' %}
+
+{% block content %}
+<div class="card p-4 shadow-sm col-md-8 mx-auto">
+    <h2>{% if object %}Редактировать{% else %}Добавить{% endif %} фильм</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Сохранить</button>
+        <a href="{% url 'cineboard:movie_list' %}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

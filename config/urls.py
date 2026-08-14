@@ -5,7 +5,10 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('books.urls')),
+    path('books/', include('books.urls')),
+    path('captcha/', include('captcha.urls')),
+    path('users/', include('users.urls')),
+    path('cineboard/', include('CineBoard.urls')),
 ]
 
 if settings.DEBUG:

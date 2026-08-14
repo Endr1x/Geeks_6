@@ -1,0 +1,11 @@
+{% extends 'CineBoard/base.html' %}
+
+{% block content %}
+<div class="card p-4 col-md-5 mx-auto shadow-sm">
+    <h2>Вход</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary w-100">Войти</button>
+    </form>
+</div>

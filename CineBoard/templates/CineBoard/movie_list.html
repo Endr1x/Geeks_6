@@ -1,0 +1,44 @@
+{% extends 'CineBoard/base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <form method="get" class="d-flex">
+            <input type="text" name="q" value="{{ query }}" class="form-control me-2" placeholder="Поиск фильма по названию...">
+            <button type="submit" class="btn btn-primary">Искать</button>
+        </form>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h5>Фильтрация по жанрам:</h5>
+    <a href="{% url 'cineboard:movie_list' %}" class="btn btn-sm {% if not selected_genre %}btn-dark{% else %}btn-outline-dark{% endif %}">Все жанры</a>
+    {% for genre in genres %}
+        <a href="?genre={{ genre.id }}" class="btn btn-sm {% if selected_genre == genre.id|stringformat:'s' %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ genre.name }}</a>
+    {% endfor %}
+</div>
+
+<div class="row">
+    {% for movie in movies %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                {% if movie.poster %}
+                    <img src="{{ movie.poster.url }}" class="card-img-top" style="height: 300px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ movie.title }}</h5>
+                    <p class="card-text text-muted">⭐ {{ movie.rating }} | ⏱ {{ movie.duration_minutes }} мин | 🔞 {{ movie.age_limit }}</p>
+                    <p class="card-text">
+                        {% for g in movie.genres.all %}
+                            <span class="badge bg-secondary">{{ g.name }}</span>
+                        {% endfor %}
+                    </p>
+                    <a href="{% url 'cineboard:movie_detail' movie.pk %}" class="btn btn-info text-white">Детали и Бронь</a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <p>Фильмы не найдены.</p>
+    {% endfor %}
+</div>
+{% endblock %}
